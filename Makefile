@@ -19,6 +19,18 @@ MODULES_DIR   := build/modules
 JOBS ?= $(shell sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4)
 CMAKE_BUILD_TYPE ?= Release
 
+# Toolchain used to compile the per-game module: auto, clang, gcc, or msvc.
+# Defaults per-platform: gcc on Linux, Apple Clang on macOS, MSVC on Windows.
+# Override with TOOLCHAIN=<name> -- see the "Toolchain" section in README.md.
+ifeq ($(OS),Windows_NT)
+DEFAULT_TOOLCHAIN := msvc
+else ifeq ($(shell uname -s),Darwin)
+DEFAULT_TOOLCHAIN := clang
+else
+DEFAULT_TOOLCHAIN := gcc
+endif
+TOOLCHAIN ?= $(DEFAULT_TOOLCHAIN)
+
 # Extra arguments forwarded after `--` to `moderngekko-run` via `make run`,
 # e.g. RUN_ARGS="--headless" or RUN_ARGS="--graphics Vulkan".
 RUN_ARGS ?=
@@ -46,6 +58,10 @@ help:
 	@echo ""
 	@echo "  make run ISO=iso/Your\\ Game.iso   # first time for a new game"
 	@echo "  make run GAME=Your-Game-Slug     # afterwards, once extracted"
+	@echo ""
+	@echo "TOOLCHAIN selects the compiler for the per-game module: auto, clang,"
+	@echo "gcc, or msvc. Defaults to gcc on Linux, clang on macOS, msvc on"
+	@echo "Windows. e.g. make run GAME=<slug> TOOLCHAIN=clang"
 	@echo ""
 	@echo "ISO only needs to be passed once per game. It also picks the slug"
 	@echo "used under extracted/<slug>/ -- pass GAME=<slug> on later invocations"
@@ -82,10 +98,6 @@ tools: dolrecomp moderngekko
 # Wii ISO extraction needs Wiimms ISO Tools; DolRecomp downloads its own
 # copy into extern/wit on first use. GameCube extraction doesn't need this,
 # but running it unconditionally keeps the pipeline simple.
-#
-# The prebuilt macOS wit binaries ship with a signature current Gatekeeper
-# rejects outright (`invalid signature (code or signature have been
-# modified)`, SIGKILL on launch) -- re-signing ad-hoc locally fixes it.
 $(WIT_STAMP): | dolrecomp
 	echo y | $(DOLRECOMP_BIN) --setup
 	@if [ "$$(uname)" = "Darwin" ] && [ -d extern/wit/bin ]; then \
@@ -130,10 +142,10 @@ extract: $(EXTRACTED_DIR)/sys/main.dol
 # moderngekko-port caches compiled modules by DOL hash + toolchain, so
 # re-running these is cheap once a module has already been built.
 recompile: moderngekko $(EXTRACTED_DIR)/sys/main.dol
-	$(MODERNGEKKO_PORT_BIN) build $(EXTRACTED_DIR) --output $(MODULES_DIR)
+	$(MODERNGEKKO_PORT_BIN) build $(EXTRACTED_DIR) --toolchain $(TOOLCHAIN) --output $(MODULES_DIR)
 
 run: moderngekko $(EXTRACTED_DIR)/sys/main.dol
-	$(MODERNGEKKO_PORT_BIN) run $(EXTRACTED_DIR) --output $(MODULES_DIR) -- $(RUN_ARGS)
+	$(MODERNGEKKO_PORT_BIN) run $(EXTRACTED_DIR) --toolchain $(TOOLCHAIN) --output $(MODULES_DIR) -- $(RUN_ARGS)
 
 # --- cleanup -------------------------------------------------------------------
 

@@ -13,15 +13,34 @@ Click **Use this template** on GitHub (or fork/clone it directly) to create your
 
 ## Dependencies
 
-CMake, Ninja, and pkg-config, plus a C11/C++23 toolchain. DolRecomp and ModernGekko both build on macOS, Linux, and Windows; this repo's `Makefile` doesn't do anything platform-specific itself, it just drives the same CMake builds each submodule supports natively.
+CMake, Ninja, and pkg-config, plus a C11/C++23 toolchain. DolRecomp and ModernGekko both build on macOS, Linux, and Windows; this repo's `Makefile` doesn't do anything platform-specific itself, it just drives the same CMake builds each submodule supports natively. `TOOLCHAIN` (see below) defaults to the native compiler for whichever of these you're on.
 
-On macOS, via Homebrew:
+### macOS
+
+Via Homebrew:
 
 ```
 brew install cmake ninja pkg-config
 ```
 
 Xcode's command line tools are also required (AppleClang 14.0.3+; verified on AppleClang 17).
+
+### Linux
+
+Ubuntu/Debian, matching what `lib/ModernGekko/vendor/dolphin`'s own CI installs for its NoGUI build (`.github/workflows/build.yml`):
+
+```
+sudo apt-get install -y ninja-build build-essential pkg-config cmake \
+  libevdev-dev libudev-dev libgtk-3-dev libsystemd-dev \
+  libbluetooth-dev libasound2-dev libpulse-dev libgl1-mesa-dev \
+  libxrandr-dev libxi-dev
+```
+
+`build-essential` pulls in GCC, the default toolchain on Linux. Other distros need the equivalent `-dev`/`-devel` packages from their own package manager (evdev, udev, GTK3, systemd, BlueZ, ALSA, PulseAudio, GL, Xrandr, Xi).
+
+### Windows
+
+Visual Studio 2022 (or the standalone Build Tools) with the "Desktop development with C++" workload, for the MSVC toolchain, plus CMake and Ninja on `PATH` (installable via winget/Chocolatey or their own installers). No external package manager is needed beyond that. Dolphin's Windows dependency tree (FFmpeg, SDL, etc.) is vendored as prebuilt binaries/source under `lib/ModernGekko/vendor/dolphin/Externals/`, unlike Linux where system `-dev` packages are expected.
 
 ## Getting the Source
 
@@ -91,12 +110,26 @@ Run `make help` (or just `make`, the default target) for this list:
 | `JOBS`             | detected CPU count                         | Parallel build jobs passed to CMake/Ninja.                |
 | `CMAKE_BUILD_TYPE` | `Release`                                  | Passed to both submodule builds.                          |
 | `RUN_ARGS`         | *(empty)*                                  | Extra flags forwarded to `moderngekko-run` via `make run`, e.g. `--headless`, `--graphics Vulkan`. |
+| `TOOLCHAIN`        | `gcc` (Linux) / `clang` (macOS) / `msvc` (Windows) | Compiler for the per-game module: `auto`, `clang`, `gcc`, or `msvc`. See "Toolchain" below. |
 
 For example, to force a debug build with extra runner flags:
 
 ```
 CMAKE_BUILD_TYPE=Debug make run ISO=/path/to/game.iso RUN_ARGS="--headless"
 ```
+
+## Toolchain
+
+The `Makefile` defaults `TOOLCHAIN` per-platform: `gcc` on Linux, Apple Clang (`clang`) on macOS, `msvc` on Windows. That default exists specifically because of a Linux issue: clang's per-game module build links with `-fuse-ld=lld`, and if `ld.lld` isn't reliably resolvable on your system (PATH issues, partial LLVM install, etc.), the module build fails at the link step. GCC's build branch in `module-template/CMakeLists.txt` doesn't use `lld` at all, so it's the safer default there. macOS and Windows don't have that failure mode, so they default to their native compiler instead.
+
+Override it either way with `TOOLCHAIN=`:
+
+```
+make run ISO=/path/to/game.iso TOOLCHAIN=clang   # try clang on Linux anyway
+make run ISO=/path/to/game.iso TOOLCHAIN=auto    # let moderngekko-port pick
+```
+
+Module builds are cached by DOL hash *and* toolchain identity, so switching `TOOLCHAIN` between runs produces a separate cache entry rather than clobbering a previous build.
 
 ## Controller Input
 
