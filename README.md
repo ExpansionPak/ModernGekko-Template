@@ -45,7 +45,7 @@ Visual Studio 2022 (or the standalone Build Tools) with the "Desktop development
 ## Getting the Source
 
 ```
-git clone --recurse-submodules git@github.com:<your-org>/<your-repo>.git
+git clone --recurse-submodules https://github.com/<your-org>/<your-repo>.git
 cd <your-repo>
 ```
 
