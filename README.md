@@ -123,6 +123,7 @@ Run `make help` (or just `make`, the default target) for this list:
 | `GAME`             | *(none)*                                   | Select an already-extracted game by slug instead of `ISO=`. Required if `ISO` isn't given. |
 | `JOBS`             | detected CPU count                         | Parallel build jobs passed to CMake/Ninja.                |
 | `CMAKE_BUILD_TYPE` | `Release`                                  | Passed to both submodule builds.                          |
+| `BUILD_TESTING`    | `OFF`                                      | Build developer test targets alongside production tools. |
 | `BACKEND`          | `c`                                        | Generated-code backend: `c` or `llvm`.                    |
 | `LLVM_DIR`         | *(CMake discovery)*                        | Optional path to LLVM 19/20's CMake package.              |
 | `RUN_ARGS`         | *(empty)*                                  | Extra flags forwarded to `moderngekko-run` via `make run`, e.g. `--headless`, `--graphics Vulkan`. |

@@ -18,6 +18,7 @@ MODULES_DIR   := build/modules
 
 JOBS ?= $(shell sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4)
 CMAKE_BUILD_TYPE ?= Release
+BUILD_TESTING ?= OFF
 
 # Generated-code backend: portable C or native LLVM objects.
 BACKEND ?= c
@@ -100,11 +101,13 @@ submodules: $(SUBMODULE_STAMP)
 
 dolrecomp: submodules
 	cmake -S $(DOLRECOMP_DIR) -B $(DOLRECOMP_BUILD) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) \
+		-DBUILD_TESTING=$(BUILD_TESTING) \
 		-DDOLRECOMP_ENABLE_LLVM=$(DOLRECOMP_ENABLE_LLVM) $(LLVM_CMAKE_ARG)
-	cmake --build $(DOLRECOMP_BUILD) -j$(JOBS)
+	cmake --build $(DOLRECOMP_BUILD) --target dolrecomp -j$(JOBS)
 
 moderngekko: submodules
 	cmake -S $(MODERNGEKKO_DIR) -B $(MODERNGEKKO_BUILD) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) \
+		-DBUILD_TESTING=$(BUILD_TESTING) \
 		-DDOLRECOMP_ENABLE_LLVM=$(DOLRECOMP_ENABLE_LLVM) $(LLVM_CMAKE_ARG)
 	cmake --build $(MODERNGEKKO_BUILD) -j$(JOBS)
 
