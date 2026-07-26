@@ -30,16 +30,9 @@ DOLRECOMP_ENABLE_LLVM = $(if $(filter llvm,$(BACKEND)),ON,OFF)
 LLVM_CMAKE_ARG = $(if $(and $(filter llvm,$(BACKEND)),$(LLVM_DIR)),-DLLVM_DIR="$(LLVM_DIR)")
 
 # Toolchain used to compile the per-game module: auto, clang, gcc, or msvc.
-# Defaults per-platform: gcc on Linux, Apple Clang on macOS, MSVC on Windows.
-# Override with TOOLCHAIN=<name> -- see the "Toolchain" section in README.md.
-ifeq ($(OS),Windows_NT)
-DEFAULT_TOOLCHAIN := msvc
-else ifeq ($(shell uname -s),Darwin)
-DEFAULT_TOOLCHAIN := clang
-else
-DEFAULT_TOOLCHAIN := gcc
-endif
-TOOLCHAIN ?= $(DEFAULT_TOOLCHAIN)
+# Auto follows the compiler used to build moderngekko-port. This keeps the
+# generated module compatible with MSVC, MinGW GCC, and MinGW Clang builds.
+TOOLCHAIN ?= auto
 
 # Extra arguments forwarded after `--` to `moderngekko-run` via `make run`,
 # e.g. RUN_ARGS="--headless" or RUN_ARGS="--graphics Vulkan".
@@ -72,8 +65,8 @@ help:
 	@echo "  make run GAME=Your-Game-Slug     # afterwards, once extracted"
 	@echo ""
 	@echo "TOOLCHAIN selects the compiler for the per-game module: auto, clang,"
-	@echo "gcc, or msvc. Defaults to gcc on Linux, clang on macOS, msvc on"
-	@echo "Windows. e.g. make run GAME=<slug> TOOLCHAIN=clang"
+	@echo "gcc, or msvc. The default, auto, follows the compiler used to"
+	@echo "build ModernGekko. e.g. make run GAME=<slug> TOOLCHAIN=clang"
 	@echo "BACKEND selects c or llvm. The llvm and llvm-run targets select llvm"
 	@echo "automatically. Set LLVM_DIR if CMake cannot find LLVM 19 or 20."
 	@echo ""

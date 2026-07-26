@@ -13,7 +13,7 @@ Click **Use this template** on GitHub (or fork/clone it directly) to create your
 
 ## Dependencies
 
-CMake, Ninja, and pkg-config, plus a C11/C++23 toolchain. DolRecomp and ModernGekko both build on macOS, Linux, and Windows; this repo's `Makefile` doesn't do anything platform-specific itself, it just drives the same CMake builds each submodule supports natively. `TOOLCHAIN` (see below) defaults to the native compiler for whichever of these you're on.
+CMake, Ninja, and pkg-config, plus a C11/C++23 toolchain. DolRecomp and ModernGekko both build on macOS, Linux, and Windows; this repo's `Makefile` doesn't do anything platform-specific itself, it just drives the same CMake builds each submodule supports natively. `TOOLCHAIN` (see below) follows the compiler used to build ModernGekko.
 
 ### Linux
 
@@ -127,7 +127,7 @@ Run `make help` (or just `make`, the default target) for this list:
 | `BACKEND`          | `c`                                        | Generated-code backend: `c` or `llvm`.                    |
 | `LLVM_DIR`         | *(CMake discovery)*                        | Optional path to LLVM 19/20's CMake package.              |
 | `RUN_ARGS`         | *(empty)*                                  | Extra flags forwarded to `moderngekko-run` via `make run`, e.g. `--headless`, `--graphics Vulkan`. |
-| `TOOLCHAIN`        | `gcc` (Linux) / `clang` (macOS) / `msvc` (Windows) | Compiler for the per-game module: `auto`, `clang`, `gcc`, or `msvc`. See "Toolchain" below. |
+| `TOOLCHAIN`        | `auto`                                      | Compiler for the per-game module: `auto`, `clang`, `gcc`, or `msvc`. See "Toolchain" below. |
 
 For example, to force a debug build with extra runner flags:
 
@@ -153,7 +153,9 @@ make recompile GAME=Your-Game-Slug BACKEND=c
 
 ## Toolchain
 
-The `Makefile` defaults `TOOLCHAIN` per-platform: `gcc` on Linux, Apple Clang (`clang`) on macOS, `msvc` on Windows. That default exists specifically because of a Linux issue: clang's per-game module build links with `-fuse-ld=lld`, and if `ld.lld` isn't reliably resolvable on your system (PATH issues, partial LLVM install, etc.), the module build fails at the link step. GCC's build branch in `module-template/CMakeLists.txt` doesn't use `lld` at all, so it's the safer default there. macOS and Windows don't have that failure mode, so they default to their native compiler instead.
+The default `TOOLCHAIN=auto` follows the compiler used to build `moderngekko-port`.
+This keeps an MSVC build on MSVC and an MSYS2/MinGW build on GCC or Clang instead
+of assuming that Visual Studio's `cl` is available.
 
 Override it either way with `TOOLCHAIN=`:
 
