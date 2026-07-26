@@ -2,7 +2,7 @@
 
 A template for building a static-recompilation pipeline for GameCube and Wii games, built on:
 
-- [DolRecomp](https://github.com/ExpansionPak/DolRecomp) - static recompiler that turns a GameCube/Wii DOL into split C source.
+- [DolRecomp](https://github.com/ExpansionPak/DolRecomp) - static recompiler that turns a GameCube/Wii DOL into portable C or optimized native LLVM objects.
 - [ModernGekko](https://github.com/ExpansionPak/ModernGekko) - the runtime the recompiled C links against (built on a Dolphin-derived core for video/audio/HLE).
 
 Both are pulled in as git submodules under `lib/`. Everything is handled through the top-level `Makefile`. This repo has no game-specific code of its own, so it's a starting point for standing up a recompilation project for any GameCube or Wii title you own.
@@ -68,6 +68,18 @@ make run ISO=/path/to/Your\ Game.iso
 
 This builds DolRecomp and ModernGekko, extracts the ISO, recompiles `main.dol` to C, compiles the result into a native module, and launches the game in a window.
 
+For the optimized LLVM backend:
+
+```
+make llvm-run ISO=/path/to/Your\ Game.iso
+```
+
+`make llvm` builds the module without launching it. DolRecomp emits native
+objects, and RecompCore's module template discovers the generated object
+manifest and links every object into the game module automatically. LLVM is
+only needed while building; the resulting game module has no LLVM runtime
+dependency.
+
 Each game gets its own directory under `extracted/<slug>/`, where `<slug>` is derived from the ISO's filename, so multiple games coexist without clobbering each other. `ISO` is only needed the first time per game, once extracted, run it again by slug instead:
 
 ```
@@ -99,6 +111,8 @@ Run `make help` (or just `make`, the default target) for this list:
 | `extract`    | Extract a GameCube/Wii ISO into `extracted/<slug>/`         |
 | `recompile`  | Recompile + compile a runnable module                       |
 | `run`        | Recompile (if needed) and launch the game                   |
+| `llvm`       | Build an optimized LLVM object module                       |
+| `llvm-run`   | Build an LLVM object module and launch the game             |
 | `clean`      | Remove all build output                                     |
 
 ## Variables
@@ -109,6 +123,8 @@ Run `make help` (or just `make`, the default target) for this list:
 | `GAME`             | *(none)*                                   | Select an already-extracted game by slug instead of `ISO=`. Required if `ISO` isn't given. |
 | `JOBS`             | detected CPU count                         | Parallel build jobs passed to CMake/Ninja.                |
 | `CMAKE_BUILD_TYPE` | `Release`                                  | Passed to both submodule builds.                          |
+| `BACKEND`          | `c`                                        | Generated-code backend: `c` or `llvm`.                    |
+| `LLVM_DIR`         | *(CMake discovery)*                        | Optional path to LLVM 19/20's CMake package.              |
 | `RUN_ARGS`         | *(empty)*                                  | Extra flags forwarded to `moderngekko-run` via `make run`, e.g. `--headless`, `--graphics Vulkan`. |
 | `TOOLCHAIN`        | `gcc` (Linux) / `clang` (macOS) / `msvc` (Windows) | Compiler for the per-game module: `auto`, `clang`, `gcc`, or `msvc`. See "Toolchain" below. |
 
@@ -116,6 +132,22 @@ For example, to force a debug build with extra runner flags:
 
 ```
 CMAKE_BUILD_TYPE=Debug make run ISO=/path/to/game.iso RUN_ARGS="--headless"
+```
+
+## LLVM Backend
+
+DolRecomp supports LLVM 19 and 20. If it is installed outside CMake's normal
+search path, point the template at its package directory:
+
+```
+make llvm GAME=Your-Game-Slug LLVM_DIR=/usr/lib/llvm-19/lib/cmake/llvm
+make llvm-run GAME=Your-Game-Slug LLVM_DIR=/usr/lib/llvm-19/lib/cmake/llvm
+```
+
+The portable C backend remains the default and is always available:
+
+```
+make recompile GAME=Your-Game-Slug BACKEND=c
 ```
 
 ## Toolchain

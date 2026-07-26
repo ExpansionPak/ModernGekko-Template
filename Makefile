@@ -19,6 +19,15 @@ MODULES_DIR   := build/modules
 JOBS ?= $(shell sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4)
 CMAKE_BUILD_TYPE ?= Release
 
+# Generated-code backend: portable C or native LLVM objects.
+BACKEND ?= c
+LLVM_DIR ?=
+ifneq ($(filter $(BACKEND),c llvm),$(BACKEND))
+$(error BACKEND must be c or llvm)
+endif
+DOLRECOMP_ENABLE_LLVM = $(if $(filter llvm,$(BACKEND)),ON,OFF)
+LLVM_CMAKE_ARG = $(if $(and $(filter llvm,$(BACKEND)),$(LLVM_DIR)),-DLLVM_DIR="$(LLVM_DIR)")
+
 # Toolchain used to compile the per-game module: auto, clang, gcc, or msvc.
 # Defaults per-platform: gcc on Linux, Apple Clang on macOS, MSVC on Windows.
 # Override with TOOLCHAIN=<name> -- see the "Toolchain" section in README.md.
@@ -41,7 +50,7 @@ WIT_STAMP := .git/.recomp-wit-stamp
 .DEFAULT_GOAL := help
 
 .PHONY: help all tools dolrecomp moderngekko submodules wit extract recompile run \
-        clean clean-extracted clean-tools
+        llvm llvm-run clean clean-extracted clean-tools
 
 help:
 	@echo "GCWIIRecomp-template"
@@ -54,6 +63,8 @@ help:
 	@echo "  make extract ISO=path/to.iso     Extract a GameCube/Wii ISO"
 	@echo "  make recompile ISO=path/to.iso   Recompile + compile a runnable module"
 	@echo "  make run ISO=path/to.iso         Recompile (if needed) and launch the game"
+	@echo "  make llvm ISO=path/to.iso        Build an optimized LLVM object module"
+	@echo "  make llvm-run ISO=path/to.iso    Build LLVM objects and launch the game"
 	@echo "  make clean                       Remove all build output"
 	@echo ""
 	@echo "  make run ISO=iso/Your\\ Game.iso   # first time for a new game"
@@ -62,6 +73,8 @@ help:
 	@echo "TOOLCHAIN selects the compiler for the per-game module: auto, clang,"
 	@echo "gcc, or msvc. Defaults to gcc on Linux, clang on macOS, msvc on"
 	@echo "Windows. e.g. make run GAME=<slug> TOOLCHAIN=clang"
+	@echo "BACKEND selects c or llvm. The llvm and llvm-run targets select llvm"
+	@echo "automatically. Set LLVM_DIR if CMake cannot find LLVM 19 or 20."
 	@echo ""
 	@echo "ISO only needs to be passed once per game. It also picks the slug"
 	@echo "used under extracted/<slug>/ -- pass GAME=<slug> on later invocations"
@@ -86,11 +99,13 @@ submodules: $(SUBMODULE_STAMP)
 # --- tools -------------------------------------------------------------------
 
 dolrecomp: submodules
-	cmake -S $(DOLRECOMP_DIR) -B $(DOLRECOMP_BUILD) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	cmake -S $(DOLRECOMP_DIR) -B $(DOLRECOMP_BUILD) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) \
+		-DDOLRECOMP_ENABLE_LLVM=$(DOLRECOMP_ENABLE_LLVM) $(LLVM_CMAKE_ARG)
 	cmake --build $(DOLRECOMP_BUILD) -j$(JOBS)
 
 moderngekko: submodules
-	cmake -S $(MODERNGEKKO_DIR) -B $(MODERNGEKKO_BUILD) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	cmake -S $(MODERNGEKKO_DIR) -B $(MODERNGEKKO_BUILD) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) \
+		-DDOLRECOMP_ENABLE_LLVM=$(DOLRECOMP_ENABLE_LLVM) $(LLVM_CMAKE_ARG)
 	cmake --build $(MODERNGEKKO_BUILD) -j$(JOBS)
 
 tools: dolrecomp moderngekko
@@ -142,10 +157,16 @@ extract: $(EXTRACTED_DIR)/sys/main.dol
 # moderngekko-port caches compiled modules by DOL hash + toolchain, so
 # re-running these is cheap once a module has already been built.
 recompile: moderngekko $(EXTRACTED_DIR)/sys/main.dol
-	$(MODERNGEKKO_PORT_BIN) build $(EXTRACTED_DIR) --toolchain $(TOOLCHAIN) --output $(MODULES_DIR)
+	$(MODERNGEKKO_PORT_BIN) build $(EXTRACTED_DIR) --backend $(BACKEND) --toolchain $(TOOLCHAIN) --output $(MODULES_DIR)
 
 run: moderngekko $(EXTRACTED_DIR)/sys/main.dol
-	$(MODERNGEKKO_PORT_BIN) run $(EXTRACTED_DIR) --toolchain $(TOOLCHAIN) --output $(MODULES_DIR) -- $(RUN_ARGS)
+	$(MODERNGEKKO_PORT_BIN) run $(EXTRACTED_DIR) --backend $(BACKEND) --toolchain $(TOOLCHAIN) --output $(MODULES_DIR) -- $(RUN_ARGS)
+
+llvm: BACKEND=llvm
+llvm: recompile
+
+llvm-run: BACKEND=llvm
+llvm-run: run
 
 # --- cleanup -------------------------------------------------------------------
 
