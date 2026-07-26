@@ -109,7 +109,7 @@ moderngekko: submodules
 	cmake -S $(MODERNGEKKO_DIR) -B $(MODERNGEKKO_BUILD) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) \
 		-DBUILD_TESTING=$(BUILD_TESTING) \
 		-DDOLRECOMP_ENABLE_LLVM=$(DOLRECOMP_ENABLE_LLVM) $(LLVM_CMAKE_ARG)
-	cmake --build $(MODERNGEKKO_BUILD) -j$(JOBS)
+	cmake --build $(MODERNGEKKO_BUILD) --target moderngekko-port -j$(JOBS)
 
 tools: dolrecomp moderngekko
 
