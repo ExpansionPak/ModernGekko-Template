@@ -38,12 +38,11 @@ TOOLCHAIN ?= auto
 # e.g. RUN_ARGS="--headless" or RUN_ARGS="--graphics Vulkan".
 RUN_ARGS ?=
 
-SUBMODULE_STAMP := .git/.recomp-submodules-stamp
 WIT_STAMP := .git/.recomp-wit-stamp
 
 .DEFAULT_GOAL := help
 
-.PHONY: help all tools dolrecomp moderngekko submodules wit extract recompile run \
+.PHONY: help all check tools dolrecomp moderngekko submodules wit extract recompile run \
         llvm llvm-run clean clean-extracted clean-tools
 
 help:
@@ -54,6 +53,7 @@ help:
 	@echo "needs an extracted game."
 	@echo ""
 	@echo "  make tools                       Build DolRecomp and ModernGekko"
+	@echo "  make check                       Check tools, compiler, architecture, and sources"
 	@echo "  make extract ISO=path/to.iso     Extract a GameCube/Wii ISO"
 	@echo "  make recompile ISO=path/to.iso   Recompile + compile a runnable module"
 	@echo "  make run ISO=path/to.iso         Recompile (if needed) and launch the game"
@@ -81,14 +81,22 @@ help:
 
 all: tools
 
+# --- build requirements -----------------------------------------------------
+
+check:
+	@sh scripts/check-build.sh $(if $(filter 1 yes true,$(FETCH)),--fetch) \
+		$(if $(filter llvm,$(BACKEND)),--llvm)
+
 # --- submodules -------------------------------------------------------------
 
-$(SUBMODULE_STAMP): .gitmodules
-	git submodule update --init --recursive
-	@mkdir -p "$$(dirname "$(SUBMODULE_STAMP)")"
-	@touch "$(SUBMODULE_STAMP)"
-
-submodules: $(SUBMODULE_STAMP)
+submodules:
+	@if [ -f "$(DOLRECOMP_DIR)/CMakeLists.txt" ] && \
+	    [ -f "$(MODERNGEKKO_DIR)/CMakeLists.txt" ]; then \
+		echo "ModernGekko and DolRecomp sources already present."; \
+	else \
+		git submodule sync --recursive; \
+		git submodule update --init --recursive; \
+	fi
 
 # --- tools -------------------------------------------------------------------
 

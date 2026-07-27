@@ -55,6 +55,17 @@ If you already cloned without `--recurse-submodules`, `make` will fetch them for
 git submodule update --init --recursive
 ```
 
+Run the build check at any time with:
+
+```
+make check
+```
+
+It verifies CMake, Ninja, Git, Python, working C11/C++23 compilers, and a
+64-bit target with 8-byte pointers. If the source submodules are absent, it
+offers to fetch them. Use `make check FETCH=1` for a non-interactive fetch,
+or `make check BACKEND=llvm` to validate LLVM 19/20 as well.
+
 > [!NOTE]
 > `lib/ModernGekko` vendors a large chunk of Dolphin's dependency tree (SDL, fmt, imgui, Vulkan headers, etc.), so the first submodule sync takes a while and pulls a few hundred MB.
 
@@ -107,6 +118,7 @@ Run `make help` (or just `make`, the default target) for this list:
 
 | Target       | Description                                                |
 |--------------|--------------------------------------------------------------|
+| `check`      | Validate build tools, compilers, architecture, and sources  |
 | `tools`      | Build DolRecomp and ModernGekko                             |
 | `extract`    | Extract a GameCube/Wii ISO into `extracted/<slug>/`         |
 | `recompile`  | Recompile + compile a runnable module                       |
